@@ -1,0 +1,444 @@
+<!--
+  DON'T EXPECT CLEAN CODE HERE
+  I LEARNED THREE.JS AND MADE THIS LITTLE DEMO IN A DAY
+  IT WAS NEVER MEANT TO BE MAINTAINABLE
+  JUST A FUN LITTLE PROJECT
+
+  TO RUN LOCALLY, RUN `npx http-server -o index.html` (TO AVOID CORS ISSUES)
+-->
+
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif
+  }
+
+  main {
+    display: flex;
+    height: 100%;
+  }
+
+  main > div {
+    flex: 1;
+    height: 100%;
+  }
+  @media (max-width: 1000px) {
+    main {
+      flex-direction: column;
+    }
+  }
+
+  #preview-container {
+    background: #f4ede3;
+    cursor: grab;
+    min-height: 400px;
+    min-width: 400px;
+  }
+  #preview-container.grabbing {
+    cursor: grabbing;
+  }
+  #preview-container > canvas {
+    width: 100% !important;
+  }
+
+  .config {
+    overflow-y: auto;
+  }
+  .config > div {
+    margin: 1rem;
+  }
+  .config-area {
+    background: #f4ede3;
+    padding: 1rem;
+  }
+  .config-area > div:not(:first-child) {
+    margin-top: 1rem;
+  }
+  .config-area input {
+    background: white;
+    padding: 0.5rem;
+    border: 1px solid white;
+    cursor: pointer;
+  }
+  .config-area input:hover {
+    border-color: black;
+  }
+  a {
+    color: black;
+    text-underline-offset: 0.4rem;
+    text-decoration-thickness: 1px;
+  }
+  a:hover {
+    color: brown
+  }
+
+  .canvas-container {
+    width:fit-content;
+    border: 2px black dashed;
+    position: relative;
+  }
+
+  .handle {
+    position: absolute;
+    user-select: none;
+    background: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 99999px;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+  .move-handle {
+    cursor:move;
+  }
+  .resize-handle {
+    cursor:nwse-resize;
+  }
+
+  * {
+    accent-color: brown;
+  }
+
+  .radio-group {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .radio-group span {
+    display: block;
+    background: white;
+    border: 1px solid white;
+    padding: 1rem 1.4rem;
+    display: flex;
+    justify-items: center;
+    gap: 0.75rem;
+    border-radius: 0.4rem;
+    cursor: pointer;
+  }
+  .radio-group span:hover {
+    background: #fbf7f3;
+  }
+  .radio-group input:checked ~ span {
+    border-color: black;
+  }
+  .radio-group input {
+    display: none;
+  }
+</style>
+
+<main>
+  <div id="preview-container"></div>
+
+  <div class="config">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="font-size: 2rem; font-family: 'Times New Roman', Times, serif">Add your designs</div>
+      <div style="line-height: 1em;">
+        <label style="display: flex; align-items: center; gap: 1rem">
+          <input type="range" id="displacement-scale-range" min="0" max="1" step="0.2" value="0">
+          displacementScale
+        </label>
+      </div>
+    </div>
+
+    <div class="config-area">
+      <div>Front</div>
+      <div><input type="file" id="file-input-front" accept = "image/*"></div>
+      <div class="canvas-container"><canvas id= "canvas-front" width="200" height="200"></canvas></div>
+      <div class="radio-group" id="color-front">
+        <label><input type="radio" name="color-front" value="default" checked/><span>Default</span></label>
+        <label><input type="radio" name="color-front" value="white"/><span><b style="height: 1rem; width: 1rem; border-radius: 9999px; border: 1px solid; box-sizing: border-box;"></b>White</span></label>
+        <label><input type="radio" name="color-front" value="black"/><span><b style="height: 1rem; width: 1rem; background: black; border-radius: 9999px;"></b>Black</span></label>
+        <label><input type="radio" name="color-front" value="blue"/><span><b style="height: 1rem; width: 1rem; background: #3b82f6; border-radius: 9999px;"></b>Blue</span></label>
+      </div>
+    </div>
+
+    <div class="config-area">
+      <div>Back</div>
+      <div><input type="file" id="file-input-back" accept = "image/*"></div>
+      <div class="canvas-container"><canvas id= "canvas-back" width="600" height="800" style="width: 200px; height: 267px"></canvas></div>
+      <div class="radio-group" id="color-back">
+        <label><input type="radio" name="color-back" value="default" checked/><span>Default</span></label>
+        <label><input type="radio" name="color-back" value="white"/><span><b style="height: 1rem; width: 1rem; border-radius: 9999px; border: 1px solid; box-sizing: border-box;"></b>White</span></label>
+        <label><input type="radio" name="color-back" value="black"/><span><b style="height: 1rem; width: 1rem; background: black; border-radius: 9999px;"></b>Black</span></label>
+        <label><input type="radio" name="color-back" value="blue"/><span><b style="height: 1rem; width: 1rem; background: #3b82f6; border-radius: 9999px;"></b>Blue</span></label>
+      </div>
+    </div>
+    <div style="font-weight: 300;"><span style="padding-right: 0.5rem"><a href="https://sketchfab.com/3d-models/t-shirt-7c8a4dede482474fa5a74f24c6fc5e81" target="_blank">T-shirt model by Hyperrealitystudio</a></div>
+  </div>
+</main>
+
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+    }
+  }
+</script>
+
+<script type="module">
+  import * as THREE from 'three'
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+  import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
+  import { TessellateModifier } from 'three/addons/modifiers/TessellateModifier.js'
+
+  const container = document.getElementById('preview-container')
+
+  const scene = new THREE.Scene()
+  const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000)
+  scene.add(camera)
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true })
+  renderer.setSize(container.clientWidth, container.clientHeight)
+  renderer.setPixelRatio(window.devicePixelRatio)
+  container.appendChild(renderer.domElement)
+
+  scene.background = new THREE.Color(0xf4ede3)
+
+  scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment()).texture
+
+  const light1 = new THREE.AmbientLight(0xffffff, 0.3)
+  light1.name = 'ambient_light'
+  camera.add(light1)
+  const light2 = new THREE.DirectionalLight(0xffffff, 0.8 * Math.PI)
+  light2.position.set(0.5, 0, 0.866)
+  light2.name = 'main_light'
+  camera.add(light2)
+
+  let model
+  let child
+  let textureMaterial
+  let textureBitmap
+  let textureCanvas
+  let displacementCanvas
+  new GLTFLoader().setPath('t-shirt/').load('scene.gltf', (gltf) => {
+    model = gltf.scene
+
+    const box = new THREE.Box3().setFromObject(model)
+    const size = box.getSize(new THREE.Vector3()).length()
+    const center = box.getCenter(new THREE.Vector3())
+    model.position.x = (2 * model.position.x) - center.x
+    model.position.y = (2 * model.position.y) - center.y
+    model.position.z = (2 * model.position.z) - center.z
+    camera.position.x = center.x + size / 2.0
+    camera.position.y = center.y + size / 5.0
+    camera.position.z = center.z + size / 2.0
+    camera.lookAt(center)
+
+    scene.add(model)
+
+    model.traverse((a_child) => {
+      if (a_child.material == null) return
+
+      child = a_child
+      textureMaterial = child.material
+      textureBitmap = textureMaterial.map.source.data
+      textureCanvas = new OffscreenCanvas(textureBitmap.width, textureBitmap.height)
+      displacementCanvas = new OffscreenCanvas(textureBitmap.width, textureBitmap.height)
+
+      textureCanvas.getContext('2d').drawImage(textureBitmap, 0, 0)
+      textureMaterial.map.source = new THREE.Texture(textureCanvas).source
+      textureMaterial.displacementMap = textureMaterial.map.clone()
+      textureMaterial.displacementMap.source = new THREE.Texture(displacementCanvas).source
+      textureMaterial.displacementScale = 0
+
+      renderer.render(scene, camera)
+    })
+  })
+
+  let tessellationModified = false
+  document.getElementById('displacement-scale-range').addEventListener('change', (event) => {
+    textureMaterial.displacementScale = event.target.value
+    if (!tessellationModified) child.geometry = new TessellateModifier(0.1).modify(child.geometry)
+    tessellationModified = true
+    textureMaterial.displacementMap.needsUpdate = true
+    renderer.render(scene, camera)
+  })
+
+  window.addEventListener('resize', () => {
+    camera.aspect = container.clientWidth / container.clientHeight
+    camera.updateProjectionMatrix()
+    renderer.setSize(container.clientWidth, container.clientHeight)
+    renderer.render(scene, camera)
+  })
+
+  // ROTATION
+  addDraggingEventListeners(container, {
+    onDragStart: () => container.classList.add('grabbing'),
+    onDragEnd: () => container.classList.remove('grabbing'),
+    onDrag: (_, { posDiff }) => {
+      model.rotation.y += posDiff.x / 250
+      renderer.render(scene, camera)
+    }
+  })
+
+  const areas = [
+    { name: 'front', x: 580, y: 1500, width: 200, height: 200, mirrorX: false, mirrorY: true },
+    { name: 'back', x: 1250, y: 1000, width: 600, height: 800, mirrorX: true, mirrorY: true }
+  ]
+  areas.forEach(area => {
+    area.fileInput = document.getElementById(`file-input-${area.name}`)
+    area.canvas = document.getElementById(`canvas-${area.name}`)
+    area.render = () => {
+      const ctx = area.canvas.getContext('2d', { willReadFrequently: true })
+      ctx.clearRect(0, 0, area.canvas.width, area.canvas.height)
+      ctx.drawImage(area.image, area.imageX, area.imageY, area.imageWidth, area.imageHeight)
+
+      if (area.resizeHandle == null) {
+        area.resizeHandle = document.createElement('div')
+        area.resizeHandle.classList.add('handle')
+        area.resizeHandle.classList.add('resize-handle')
+        area.resizeHandle.innerText = '⤡'
+        area.canvas.parentNode.appendChild(area.resizeHandle)
+        addDraggingEventListeners(area.resizeHandle, {
+          onDrag: (_, { posDiff }) => {
+            const width = Math.min(Math.max(area.imageWidth + (posDiff.x / area.canvas.clientWidth * area.canvas.width), 0), area.width - area.imageX)
+            // const height = Math.min(Math.max(area.imageHeight + (posDiff.y / area.canvas.clientHeight * area.canvas.height), 0), area.height - area.imageY)
+            area.imageWidth = width
+            area.imageHeight = width / area.image.width * area.image.height
+            area.render()
+          }
+        })
+      }
+      if (area.moveHandle == null) {
+        area.moveHandle = document.createElement('div')
+        area.moveHandle.classList.add('handle')
+        area.moveHandle.classList.add('move-handle')
+        area.moveHandle.innerText = '✥'
+        area.canvas.parentNode.appendChild(area.moveHandle)
+        addDraggingEventListeners(area.moveHandle, {
+          onDrag: (_, { posDiff }) => {
+            area.imageX = Math.min(Math.max(area.imageX + (posDiff.x / area.canvas.clientWidth * area.canvas.width), 0), area.width - area.imageWidth)
+            area.imageY = Math.min(Math.max(area.imageY + (posDiff.y / area.canvas.clientHeight * area.canvas.height), 0), area.height - area.imageHeight)
+            area.render()
+          }
+        })
+      }
+      area.resizeHandle.style.top = (area.imageY + area.imageHeight - 6) * area.canvas.clientHeight / area.canvas.height
+      area.resizeHandle.style.left = (area.imageX + area.imageWidth - 6) * area.canvas.clientWidth / area.canvas.width
+      area.moveHandle.style.top = (area.imageY + area.imageHeight - 6) * area.canvas.clientHeight / area.canvas.height
+      area.moveHandle.style.left = (area.imageX - 18) * area.canvas.clientWidth / area.canvas.width
+
+      updateTextures()
+    }
+    area.fileInput.addEventListener('change', (e) => {
+      if (!e.target.files) return
+      const reader = new FileReader()
+      reader.readAsDataURL(e.target.files[0])
+      reader.onloadend = (e) => {
+        const image = new Image()
+        image.src = e.target.result
+        image.onload = () => {
+          area.imageVariants = {
+            default: image,
+            white: getImageWithColor(image, [255, 255, 255]),
+            black: getImageWithColor(image, [0, 0, 0]),
+            blue: getImageWithColor(image, [59, 130, 246])
+          }
+          area.image = area.imageVariants[document.querySelector(`#color-${area.name} input:checked`).value]
+          const ratio = Math.min(area.canvas.width / image.width, area.canvas.height / image.height)
+          area.imageX = 0
+          area.imageY = 0
+          area.imageWidth = image.width * ratio
+          area.imageHeight = image.height * ratio
+          area.render()
+        }
+      }
+    })
+    Array.from(document.querySelectorAll(`#color-${area.name} input`)).forEach(radio => {
+      radio.addEventListener('change', event => {
+        if (area.image == null) return
+        area.image = area.imageVariants[event.target.value]
+        area.render()
+      })
+    })
+  })
+
+  const updateTextures = () => {
+    const textureCanvasContext = textureCanvas.getContext('2d')
+    textureCanvasContext.drawImage(textureBitmap, 0, 0)
+    areas.forEach(area => {
+      textureCanvasContext.translate(area.mirrorX ? area.x + area.width : area.x, area.mirrorY ? area.y + area.height : area.y)
+      textureCanvasContext.scale(area.mirrorX ? -1 : 1, area.mirrorY ? -1 : 1)
+      textureCanvasContext.drawImage(area.canvas, 0, 0)
+      textureCanvasContext.setTransform(1, 0, 0, 1, 0, 0)
+    })
+    textureMaterial.map.needsUpdate = true
+
+    const displacementCanvasContext = displacementCanvas.getContext('2d')
+    displacementCanvasContext.clearRect(0, 0, displacementCanvas.width, displacementCanvas.height)
+    areas.forEach(area => {
+      if (area.imageVariants == null) return
+      displacementCanvasContext.translate(area.mirrorX ? area.x + area.width : area.x, area.mirrorY ? area.y + area.height : area.y)
+      displacementCanvasContext.scale(area.mirrorX ? -1 : 1, area.mirrorY ? -1 : 1)
+      displacementCanvasContext.drawImage(area.imageVariants.white, area.imageX, area.imageY, area.imageWidth, area.imageHeight)
+      displacementCanvasContext.setTransform(1, 0, 0, 1, 0, 0)
+    })
+    textureMaterial.displacementMap.needsUpdate = true
+
+    renderer.render(scene, camera)
+  }
+
+  // HELPERS
+
+  function addDraggingEventListeners (node, { onDragStart, onDragEnd, onDrag }) {
+    let bool = false
+    const previousPos = { x: 0, y: 0 }
+    node.addEventListener('mousedown', (event) => {
+      event.stopPropagation()
+      bool = true
+      previousPos.x = event.clientX
+      previousPos.y = event.clientY
+      onDragStart?.(event)
+    })
+    document.body.addEventListener('mouseup', (event) => {
+      bool = false
+      onDragEnd?.(event)
+    })
+    document.body.addEventListener('mousemove', (event) => {
+      if (!bool) return
+      if (model == null) return
+      onDrag?.(event, { posDiff: { x: event.clientX - previousPos.x, y: event.clientY - previousPos.y } })
+      previousPos.x = event.clientX
+      previousPos.y = event.clientY
+    })
+  }
+
+  function debounce (fn, ms) {
+    let timeout
+    return (...args) => {
+      clearTimeout(timeout)
+      timeout = setTimeout(() => fn(args), ms)
+    }
+  }
+
+  function throttle (fn, ms) {
+    let timeout
+    let lastArgs
+    return (...args) => {
+      lastArgs = args
+      if (timeout != null) return
+      fn(lastArgs)
+      timeout = setTimeout(() => { timeout = null }, ms)
+    }
+  }
+
+  function getImageWithColor (image, [r, g, b] = [], { absoluteAlpha } = {}) {
+    const canvas = new OffscreenCanvas(image.width, image.height)
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(image, 0, 0)
+    const imageData = ctx.getImageData(0, 0, image.width, image.height)
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      if (r != null) imageData.data[i] = r // R
+      if (g != null) imageData.data[i + 1] = g // G
+      if (b != null) imageData.data[i + 2] = b // B
+      if (absoluteAlpha) imageData.data[i + 3] = imageData.data[i + 3] > 0 ? 255 : 0 // Alpha
+    }
+    ctx.putImageData(imageData, 0, 0)
+    return canvas
+  }
+</script>
